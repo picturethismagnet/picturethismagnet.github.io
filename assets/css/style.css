@@ -272,6 +272,15 @@ section {
   font-weight: 700;
   color: var(--color-charcoal);
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-logo-img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .nav-logo span {
