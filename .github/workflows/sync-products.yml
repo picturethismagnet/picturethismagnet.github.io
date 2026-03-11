@@ -1,0 +1,84 @@
+name: Sync Products from Shopify
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'       # Every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+  workflow_dispatch:              # Manual trigger from GitHub UI
+  push:
+    paths:
+      - 'scripts/sync-products.py'
+
+concurrency:
+  group: shopify-sync
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sync products from Shopify
+        env:
+          SHOPIFY_DOMAIN: picturethismagnet.myshopify.com
+        run: python scripts/sync-products.py
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "Shopify Sync Bot"
+          git config user.email "sync@picturethismagnet.com"
+
+          PRODUCT_COUNT=$(python3 -c "import json; d=json.load(open('_data/products.json')); print(d['productCount'])")
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          git add -A
+          git commit -m "🔄 Auto-sync: ${PRODUCT_COUNT} products from Shopify
+
+          Synced at ${TIMESTAMP}
+          Triggered by: ${{ github.event_name }}"
+
+          git push
+
+  deploy:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

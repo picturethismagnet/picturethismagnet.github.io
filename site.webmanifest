@@ -1,0 +1,10 @@
+{
+  "name": "PictureThisMagnet",
+  "short_name": "PictureThis",
+  "description": "Custom photo magnets — personalized, premium, and shipped nationwide.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFB",
+  "theme_color": "#0D9488",
+  "icons": []
+}
